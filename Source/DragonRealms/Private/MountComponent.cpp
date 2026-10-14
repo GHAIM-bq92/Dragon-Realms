@@ -1,6 +1,8 @@
 #include "MountComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/Actor.h"
+#include "DragonMountActor.h"
+#include "Components/SkeletalMeshComponent.h"
 
 UMountComponent::UMountComponent()
 {
@@ -40,8 +42,19 @@ void UMountComponent::Mount(AActor* NewRider)
     // Attach the rider to the mount actor on the server
     if (NewRider && GetOwner())
     {
-        FAttachmentTransformRules Rules(EAttachmentRule::SnapToTarget, true);
-        NewRider->AttachToActor(GetOwner(), Rules, NAME_None);
+        // If the mount is a DragonMountActor, attach to its SkeletalMesh socket for a precise rider transform
+        ADragonMountActor* Dragon = Cast<ADragonMountActor>(GetOwner());
+        if (Dragon && Dragon->SkeletalMeshComp)
+        {
+            FName SocketName = Dragon->RiderSocketName;
+            NewRider->AttachToComponent(Dragon->SkeletalMeshComp, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+        }
+        else
+        {
+            // Fallback: attach to the actor root
+            FAttachmentTransformRules Rules(EAttachmentRule::SnapToTarget, true);
+            NewRider->AttachToActor(GetOwner(), Rules, NAME_None);
+        }
     }
 
     Multicast_OnMounted(NewRider);
